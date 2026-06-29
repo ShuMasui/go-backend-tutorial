@@ -1,0 +1,266 @@
+openapi: 3.1.0
+info:
+  title: Gemini Go Portal API
+  description: |
+    Go backend API with PostgreSQL user authentication, profile management,
+    and Server-Sent Events (SSE) streaming chat integrated with Google Gemini API.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /api/signup:
+    post:
+      summary: Register a new user
+      description: Create a new user account with credentials.
+      operationId: signUp
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+      responses:
+        '201':
+          description: User registered successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Account created successfully"
+        '400':
+          description: Invalid request body or email already exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/login:
+    post:
+      summary: User login
+      description: Authenticate user credentials and return a JWT access token.
+      operationId: logIn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogInRequest'
+      responses:
+        '200':
+          description: Authentication successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogInResponse'
+        '401':
+          description: Invalid email or password.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/profile:
+    get:
+      summary: Get user profile
+      description: Retrieve the profile information of the currently authenticated user.
+      operationId: getProfile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current user profile details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Missing or invalid JWT token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      summary: Update user profile
+      description: Modify the profile information (username, bio, avatar) of the authenticated user.
+      operationId: updateProfile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profile updated successfully. Returns the new profile details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: Invalid request parameters.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Missing or invalid JWT token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/chat/stream:
+    post:
+      summary: Chat stream with Gemini AI
+      description: |
+        Send a prompt to receive a streamed AI response using Server-Sent Events (SSE).
+        The stream returns chunks of text from Google's Gemini API in real-time.
+      operationId: chatStream
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Stream established successfully. Responses will be pushed chunk-by-chunk.
+          headers:
+            X-Accel-Buffering:
+              schema:
+                type: string
+              description: Value must be 'no' to prevent proxy buffering.
+          content:
+            "text/event-stream":
+              schema:
+                description: Raw text event stream containing Gemini text chunks terminated by DONE
+                type: string
+        '401':
+          description: Missing or invalid JWT token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Gemini API or internal server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Input your JWT token as "Bearer <token>".
+
+  schemas:
+    SignUpRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+          example: johndoe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        password:
+          type: string
+          format: password
+          example: strongpassword123
+
+    LogInRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        password:
+          type: string
+          format: password
+          example: strongpassword123
+
+    LogInResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT Bearer Access Token
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          $ref: '#/components/schemas/UserProfile'
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: uuid-1234-5678
+        username:
+          type: string
+          example: johndoe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        bio:
+          type: string
+          example: Hello, I am using Gemini Go Portal!
+        avatar_url:
+          type: string
+          format: uri
+          example: https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=256&auto=format&fit=crop
+
+    UpdateProfileRequest:
+      type: object
+      required:
+        - username
+      properties:
+        username:
+          type: string
+          example: john_new_name
+        bio:
+          type: string
+          example: Updated bio text here.
+        avatar_url:
+          type: string
+          format: uri
+          example: https://images.unsplash.com/new-avatar.jpg
+
+    ChatRequest:
+      type: object
+      required:
+        - prompt
+      properties:
+        prompt:
+          type: string
+          example: Hello Gemini! Tell me about PostgreSQL.
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Invalid input credentials

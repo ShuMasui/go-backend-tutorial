@@ -1,0 +1,69 @@
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs and editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+
+# Go (Backend)
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+# Test binary, built with `go test -c`
+*.test
+# Output of the go coverage tool, generic metadata
+*.out
+*.prof
+# Local compiled binaries
+backend/backend
+backend/main
+main
+
+# Node.js (Frontend)
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/package-lock.json.log
+frontend/yarn-error.log*
+frontend/.svelte-kit/
+frontend/.next/
+frontend/.nuxt/
+frontend/out/
+frontend/.cache/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment variables (Credentials & Secrets)
+.env
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# Databases
+*.db
+*.sqlite
