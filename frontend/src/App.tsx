@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { marked } from 'marked';
 import { 
   User, 
   Mail, 
@@ -807,9 +808,19 @@ To connect the frontend to your real backend:
                     key={msg.id} 
                     className={`message-bubble ${msg.sender === 'user' ? 'message-user' : 'message-ai'}`}
                   >
-                    <div style={{ whiteSpace: 'pre-wrap' }}>
-                      {msg.text || (isStreaming && msg.sender === 'ai' ? '...' : '')}
-                    </div>
+                    <div 
+                      className="markdown-content"
+                      dangerouslySetInnerHTML={{
+                        __html: (() => {
+                          const contentText = msg.text || (isStreaming && msg.sender === 'ai' ? '...' : '');
+                          try {
+                            return marked.parse(contentText, { breaks: true, gfm: true }) as string;
+                          } catch (err) {
+                            return contentText;
+                          }
+                        })()
+                      }}
+                    />
                     <span className="message-time">
                       {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>

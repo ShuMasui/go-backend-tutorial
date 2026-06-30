@@ -3,6 +3,7 @@ package handlers
 import (
 	"backend/ent"
 	"backend/ent/user"
+	"backend/errs"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -47,10 +48,11 @@ func (lh *LoginHandler) Post() func(w http.ResponseWriter, r *http.Request) {
 		var request LoginRequestJsonBody
 
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-			log.Printf("JSONパースエラーです")
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code: http.StatusBadRequest, 
+				Message: "Invalid input credentials", 
+				Err: err,
+			})
 			return
 		}
 
@@ -60,18 +62,20 @@ func (lh *LoginHandler) Post() func(w http.ResponseWriter, r *http.Request) {
 		foundUser, err := lh.client.User.Query().Where(user.EmailEQ(request.Email)).Only(ctx)
 
 		if err != nil {
-			log.Printf("ユーザーが見つかりませんでした")
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
 		if err = bcrypt.CompareHashAndPassword([]byte(foundUser.Password), []byte(request.Password)); err != nil {
-			log.Printf("パスワードが違いました")
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
@@ -85,10 +89,11 @@ func (lh *LoginHandler) Post() func(w http.ResponseWriter, r *http.Request) {
 		tokenString, err := token.SignedString([]byte(jwtSecret))
 
 		if err != nil {
-			log.Printf("トークン発行不良です")
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
@@ -105,10 +110,11 @@ func (lh *LoginHandler) Post() func(w http.ResponseWriter, r *http.Request) {
 		json, err := json.Marshal(res)
 
 		if err != nil {
-			log.Printf("エンコード不良です")
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 

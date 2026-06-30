@@ -2,9 +2,9 @@ package handlers
 
 import (
 	"backend/ent"
+	"backend/errs"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"golang.org/x/crypto/bcrypt"
@@ -37,33 +37,33 @@ func (sh *SignupHandler) Post() func(w http.ResponseWriter, r *http.Request) {
 		var request SignupRequestJsonBody
 
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-			log.Printf("Singupバインドエラーです: %v", err)
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
 		avatorUrl, err := getAvator(request.Name)
 
 		if err != nil {
-			log.Printf("プロフィール画像取得エラーです: %v", err)
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
 		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
 
 		if err != nil {
-			log.Printf("ハッシュ値生成エラーです: %v", err)
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
@@ -77,10 +77,11 @@ func (sh *SignupHandler) Post() func(w http.ResponseWriter, r *http.Request) {
 			Save(ctx)
 
 		if err != nil {
-			log.Printf("データベース接続でエラーが発生しました: %v", err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 

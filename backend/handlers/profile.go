@@ -3,9 +3,10 @@ package handlers
 import (
 	"backend/ent"
 	"backend/ent/user"
+	"backend/errs"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -62,20 +63,22 @@ func (ph *ProfileHandler) Get() func(w http.ResponseWriter, r *http.Request) {
 		tokenString := r.Header.Get("Authorization")
 
 		if tokenString == "" {
-			log.Printf("Authorizationが設定されていません")
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     errors.New("Authorization header is missing"),
+			})
 			return
 		}
 
 		claims, err := AuthJwt(tokenString)
 
 		if err != nil {
-			log.Printf("JWTの認証でエラーが発生しました%v", err)
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
@@ -84,30 +87,33 @@ func (ph *ProfileHandler) Get() func(w http.ResponseWriter, r *http.Request) {
 		var foundedUser *ent.User
 		id, ok := (*claims)["id"].(string)
 		if !ok {
-			log.Printf("データ型が不正です")
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     errors.New("invalid token claim format"),
+			})
 			return
 		}
 
 		uuidFromId, err := uuid.Parse(id)
 
 		if err != nil {
-			log.Printf("uuid型に直せません")
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
 		foundedUser, err = ph.client.User.Query().Where(user.IDEQ(uuidFromId)).Only(ctx)
 
 		if err != nil {
-			log.Printf("データベース検索エラーです")
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
@@ -138,20 +144,22 @@ func (ph *ProfileHandler) Put() (func(w http.ResponseWriter, r *http.Request)) {
 		tokenString := r.Header.Get("Authorization")
 
 		if tokenString == "" {
-			log.Printf("Authorizationが設定されていません")
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     errors.New("Authorization header is missing"),
+			})
 			return
 		}
 
 		claims, err := AuthJwt(tokenString)
 
 		if err != nil {
-			log.Printf("JWTの認証でエラーが発生しました%v", err)
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
@@ -159,29 +167,32 @@ func (ph *ProfileHandler) Put() (func(w http.ResponseWriter, r *http.Request)) {
 
 		id, ok := (*claims)["id"].(string)
 		if !ok {
-			log.Printf("データ型が不正です")
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     errors.New("invalid token claim format"),
+			})
 			return
 		}
 
 		uuidFromId, err := uuid.Parse(id)
 
 		if err != nil {
-			log.Printf("uuid型に直せません")
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
 		var request ProfileRequestJsonBody
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-			log.Printf("リクエストが不正です")
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 		
@@ -190,10 +201,11 @@ func (ph *ProfileHandler) Put() (func(w http.ResponseWriter, r *http.Request)) {
 		newUser, err = ph.client.User.UpdateOneID(uuidFromId).SetName(request.Name).SetAvatorURL(request.AvatarUrl).SetProfile(request.Profile).Save(ctx)
 
 		if err != nil {
-			log.Printf("データベース更新中にエラーが発生しました")
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 

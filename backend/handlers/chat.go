@@ -3,7 +3,9 @@ package handlers
 import (
 	"backend/ent"
 	"backend/ent/user"
+	"backend/errs"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -32,20 +34,22 @@ func (ch *ChatHandler) Sse() (func(w http.ResponseWriter, r *http.Request)) {
 		tokenString := r.Header.Get("Authorization")
 
 		if tokenString == "" {
-			log.Printf("Authorizationが設定されていません")
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     errors.New("Authorization header is missing"),
+			})
 			return
 		}
 
 		claims, err := AuthJwt(tokenString)
 
 		if err != nil {
-			log.Printf("JWTの認証でエラーが発生しました%v", err)
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
@@ -53,40 +57,43 @@ func (ch *ChatHandler) Sse() (func(w http.ResponseWriter, r *http.Request)) {
 
 		id, ok := (*claims)["id"].(string)
 		if !ok {
-			log.Printf("データ型が不正です")
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     errors.New("invalid token claim format"),
+			})
 			return
 		}
 
 		uuidFromId, err := uuid.Parse(id)
 
 		if err != nil {
-			log.Printf("uuid型に直せません")
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
 		var foundedUser *ent.User
 		foundedUser, err = ch.client.User.Query().Where(user.IDEQ(uuidFromId)).Only(ctx)
 		if err != nil {
-			log.Printf("データベースのエラーです")
-			w.Header().Add("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusUnauthorized,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
 		var request ChatRequestJsonBody
 		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-			log.Printf("プロンプトのバインドエラーです: %v", err)
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
@@ -99,11 +106,11 @@ func (ch *ChatHandler) Sse() (func(w http.ResponseWriter, r *http.Request)) {
 		var geminiClient *genai.Client
 		geminiClient, err = genai.NewClient(ctx, &genai.ClientConfig{APIKey: gemini_key})
 		if err != nil {
-			log.Printf("AI接続エラーです: %v", err)
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid input credentials",
+				Err:     err,
+			})
 			return
 		}
 
@@ -111,10 +118,11 @@ func (ch *ChatHandler) Sse() (func(w http.ResponseWriter, r *http.Request)) {
 
 		flusher, ok := w.(http.Flusher)
 		if !ok {
-			log.Printf("SSE初期化に失敗: %v", err)
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte(`{"message": "Invalid input credentials"}`))
+			HandleError(w, &errs.AppError{
+				Code:    http.StatusBadRequest,
+				Message: "Invalid input credentials",
+				Err:     errors.New("ResponseWriter does not support Flusher"),
+			})
 			return
 		}
 
