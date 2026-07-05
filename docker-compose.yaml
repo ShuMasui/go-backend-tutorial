@@ -38,8 +38,7 @@ services:
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 10d & wait $${!}; done;'"
     volumes:
       - ./letsencrypt:/etc/letsencrypt
-      - ./frontend/dist:/var/www/html
+      - ./html:/var/www/html
     command: ["--version"]
 volumes:
   db-store:
-  letsencrypt:
