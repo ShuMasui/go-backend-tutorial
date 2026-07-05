@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 // API configuration
-const API_BASE = 'http://220.158.29.228/';
+const API_BASE = 'http://220.158.29.228';
 
 interface UserProfile {
   id: string;
