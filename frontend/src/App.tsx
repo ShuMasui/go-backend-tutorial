@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 // API configuration
-const API_BASE = 'http://localhost:8080';
+const API_BASE = 'http://http://220.158.29.228/';
 
 interface UserProfile {
   id: string;
